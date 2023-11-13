@@ -181,3 +181,49 @@ Save and exit the file.
 Once you have completed these steps, repeat them on the third node.
 
 With Galera configured on all of your nodes, you’re almost ready to bring up the cluster. But before you do, make sure that the appropriate ports are open in your firewall and that a SELinux policy has been created for Galera.
+
+Step 5 — Opening the Firewall on Every Server
+In this step, you will configure your firewall so that the ports required for inter-node communication are open.
+
+On every server, check the status of the firewall you set up in the Prerequisites section by running:
+
+```
+sudo firewall-cmd --list-all
+```
+In this case, only SSH, DHCP, HTTP, and HTTPS traffic is allowed through:
+```
+Output
+public
+  target: default
+  icmp-block-inversion: no
+  interfaces:
+  sources:
+  services: ssh dhcpv6-client http https
+  ports:
+  protocols:
+  masquerade: no
+  forward-ports:
+  source-ports:
+  icmp-blocks:
+  rich rules:
+```
+If you tried to start the cluster now, it would fail because the firewall would block the connections between the nodes. To solve this problem, add rules to allow MariaDB and Galera traffic through.
+
+Galera can make use of four ports:
+
+3306 For MariaDB client connections and State Snapshot Transfer that use the mysqldump method.
+4567 For Galera Cluster replication traffic. Multicast replication uses both UDP transport and TCP on this port.
+4568 For Incremental State Transfers, or IST, the process by which a missing state is received by other nodes in the cluster.
+4444 For all other State Snapshot Transfers, or SST, the mechanism by which a joiner node gets its state and data from a donor node.
+In this example, you’ll open all four ports while you do your setup. Once you’ve confirmed that replication is working, you’d want to close any ports you’re not actually using and restrict traffic to just servers in the cluster.
+
+Open the ports with the following commands:
+
+```
+sudo firewall-cmd --permanent --zone=public --add-port=3306/tcp
+sudo firewall-cmd --permanent --zone=public --add-port=4567/tcp
+sudo firewall-cmd --permanent --zone=public --add-port=4568/tcp
+sudo firewall-cmd --permanent --zone=public --add-port=4444/tcp
+sudo firewall-cmd --permanent --zone=public --add-port=4567/udp
+```
+Using --zone=public and --add-port= here, firewall-cmd is opening up these ports to public traffic. --permanent ensures that these rules persist.
